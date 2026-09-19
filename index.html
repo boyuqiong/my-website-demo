@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>人像风格智能分析工具</title>
+<style>
+  :root{
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --line: #e3e8ee;
+    --text: #2c3542;
+    --text-soft: #6b7787;
+    --text-mute: #9aa5b1;
+    --blue: #6b8cae;
+    --blue-deep: #4d6f92;
+    --blue-soft: #eef3f8;
+    --blue-line: #cfdcea;
+    --danger: #b5705f;
+    --danger-soft: #fbf0ed;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(44,53,66,.04), 0 6px 20px rgba(44,53,66,.06);
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{ max-width: 720px; margin: 0 auto; padding: 32px 18px 56px; }
+
+  /* ---------- 顶部 ---------- */
+  header{ text-align: center; margin-bottom: 26px; }
+  .logo{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:44px; height:44px; border-radius:13px;
+    background: linear-gradient(135deg, #7d9cba, #5b7c99);
+    color:#fff; margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(107,140,174,.28);
+  }
+  .logo svg{ width:24px; height:24px; }
+  h1{ margin:0; font-size: 23px; font-weight: 600; letter-spacing:.5px; color: var(--text); }
+  .subtitle{ margin: 8px 0 0; font-size: 13px; color: var(--text-mute); }
+
+  /* ---------- 卡片 ---------- */
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card-title{
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin: 0 0 14px; display:flex; align-items:center; gap:8px;
+  }
+  .badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:20px; height:20px; padding:0 6px; border-radius:6px;
+    background: var(--blue-soft); color: var(--blue-deep);
+    font-size:12px; font-weight:600;
+  }
+
+  /* ---------- 上传区 ---------- */
+  #drop{
+    border: 1.5px dashed var(--blue-line);
+    border-radius: 12px;
+    background: #fafcfe;
+    padding: 30px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: background .18s, border-color .18s;
+  }
+  #drop:hover{ background: var(--blue-soft); }
+  #drop.drag{ background: var(--blue-soft); border-color: var(--blue); }
+  #drop.has{ padding: 14px; background: #fff; border-style: solid; }
+  .drop-icon{ width:38px; height:38px; color: var(--blue); opacity:.85; }
+  .drop-main{ font-size: 14px; color: var(--text); margin-top: 10px; }
+  .drop-main b{ color: var(--blue-deep); font-weight:600; }
+  .drop-tip{ font-size: 12px; color: var(--text-mute); margin-top: 6px; }
+  #drop.has .empty{ display: none; }
+
+  .preview{ display:none; align-items:center; gap:14px; text-align:left; }
+  #drop.has .preview{ display:flex; }
+  .preview img{
+    width: 88px; height: 88px; object-fit: cover;
+    border-radius: 10px; border:1px solid var(--line); background:#f0f3f6; flex:none;
+  }
+  .preview-meta{ flex:1; min-width:0; }
+  .preview-name{
+    font-size: 13.5px; font-weight:600; color: var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .preview-size{ font-size:12px; color: var(--text-mute); margin-top:2px; }
+  .btn-text{
+    margin-top:8px; background:none; border:none; padding:0;
+    color: var(--danger); font-size:12.5px; cursor:pointer; font-family:inherit;
+  }
+  .btn-text:hover{ text-decoration: underline; }
+
+  /* ---------- 说明 ---------- */
+  .hint{
+    font-size:12px; color: var(--text-mute); display:flex;
+    gap:6px; align-items:flex-start; margin-top: 12px;
+  }
+  .hint svg{ width:14px; height:14px; flex:none; margin-top:3px; color: var(--blue); }
+
+  /* ---------- 隐私说明 ---------- */
+  .privacy{
+    display:flex; gap:10px; align-items:flex-start;
+    background: var(--blue-soft); border:1px solid var(--blue-line);
+    border-radius: 11px; padding: 13px 15px; margin: 14px 0 16px;
+    font-size: 12.5px; color: var(--text-soft); line-height:1.8;
+  }
+  .privacy svg{ width:16px; height:16px; flex:none; margin-top:4px; color: var(--blue-deep); }
+  .privacy b{ color: var(--blue-deep); font-weight:600; }
+
+  /* ---------- 按钮 ---------- */
+  .actions{ display:flex; gap:12px; }
+  .btn{
+    flex:1; padding: 13px 16px; border-radius: 10px;
+    border:1px solid transparent; font-size: 15px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition: all .18s;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-primary{ background: var(--blue); color:#fff; box-shadow: 0 3px 10px rgba(107,140,174,.25); }
+  .btn-primary:hover:not(:disabled){ background: var(--blue-deep); }
+  .btn-primary:disabled{ background:#c3cfdb; box-shadow:none; cursor:not-allowed; }
+  .btn-ghost{ flex:0 0 116px; background:#fff; color: var(--text-soft); border-color: var(--line); }
+  .btn-ghost:hover{ background:#f7f9fb; color: var(--text); }
+
+  .spinner{
+    width:15px; height:15px; border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff; border-radius:50%;
+    animation: spin .8s linear infinite; display:none;
+  }
+  .loading .spinner{ display:inline-block; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* ---------- 提示条 ---------- */
+  .alert{
+    display:none; margin-bottom:16px; padding: 11px 14px;
+    border-radius: 10px; font-size: 13.5px; border:1px solid;
+    background: var(--danger-soft); border-color:#f0d9d2; color: var(--danger);
+    word-break: break-word;
+  }
+  .alert.show{ display:block; }
+
+  /* ---------- 结果 ---------- */
+  #result{ display:none; }
+  #result.show{ display:block; }
+  .res-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 16px; padding-bottom: 14px; border-bottom:1px solid var(--line);
+  }
+  .res-head h2{ margin:0; font-size:16px; font-weight:600; }
+  .res-head span{ font-size:12px; color: var(--text-mute); }
+  .sec{
+    padding: 14px 16px; border-radius: 11px;
+    background: #fafcfe; border:1px solid #e8eef4; margin-bottom: 12px;
+  }
+  .sec:last-child{ margin-bottom: 0; }
+  .sec h3{
+    margin:0 0 8px; font-size:14px; font-weight:600; color: var(--blue-deep);
+    display:flex; align-items:center; gap:8px;
+  }
+  .sec h3 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:19px; height:19px; border-radius:50%;
+    background: var(--blue-soft); color: var(--blue-deep);
+    font-size:11px; font-weight:700; flex:none;
+  }
+  .sec .body{ font-size: 14px; color: var(--text); line-height:1.85; word-break: break-word; }
+  .sec .body strong{ color: var(--blue-deep); font-weight:600; }
+  .sec .body em{ color: var(--text-soft); font-style: normal; }
+  .sec .body ul{ margin:6px 0; padding-left: 20px; }
+  .sec .body li{ margin: 2px 0; }
+
+  /* ---------- 底部 ---------- */
+  footer{
+    text-align:center; font-size:12px; color: var(--text-mute);
+    line-height:1.9; padding: 8px 10px;
+  }
+  footer .dot{ margin:0 6px; opacity:.5; }
+
+  @media (max-width: 520px){
+    .wrap{ padding: 22px 14px 44px; }
+    h1{ font-size: 20px; }
+    .card{ padding: 16px; }
+    .actions{ flex-direction: column; }
+    .btn-ghost{ flex:none; }
+    .preview img{ width:72px; height:72px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+        <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+      </svg>
+    </div>
+    <h1>人像风格智能分析工具</h1>
+    <p class="subtitle">脸型 · 色彩季型 · 气质风格 · 形象方案 · 发型推荐，一次看懂</p>
+  </header>
+
+  <div id="alert" class="alert"></div>
+
+  <!-- ① 上传 -->
+  <section class="card">
+    <h2 class="card-title"><span class="badge">1</span>上传人像照片</h2>
+    <div id="drop">
+      <div class="empty">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <path d="M17 8l-5-5-5 5"/><path d="M12 3v13"/>
+        </svg>
+        <div class="drop-main">点击选择图片，或将图片<b>拖拽到此处</b>（也可 Ctrl / ⌘ + V 粘贴）</div>
+        <div class="drop-tip">支持 JPG / PNG，原图上限 20MB，会自动压缩后上传 · 建议使用正面清晰人像</div>
+      </div>
+      <div class="preview">
+        <img id="thumb" alt="预览图">
+        <div class="preview-meta">
+          <div class="preview-name" id="fileName">—</div>
+          <div class="preview-size" id="fileSize">—</div>
+          <button class="btn-text" id="removeBtn" type="button">移除图片</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+  </section>
+
+  <!-- ② 操作 -->
+  <section class="actions">
+    <button class="btn btn-primary" id="analyzeBtn">
+      <span class="spinner"></span><span id="btnText">开始分析</span>
+    </button>
+    <button class="btn btn-ghost" id="resetBtn" type="button">重置</button>
+  </section>
+
+  <section class="privacy">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="16" height="11" rx="2"/>
+      <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      <path d="M12 14.5v2.5"/>
+    </svg>
+    <div>
+      <b>隐私说明</b><br>
+      本站将严格保护您的个人信息，照片上传只用于分析风格造型，使用智谱进行分析。图片仅用于本次 AI 分析，不会保存在服务器，也无需你填写任何密钥。
+    </div>
+  </section>
+
+  <!-- ③ 结果 -->
+  <section class="card" id="result">
+    <div class="res-head">
+      <h2>AI 形象分析报告</h2>
+      <span id="resTime"></span>
+    </div>
+    <div id="resBody"></div>
+  </section>
+
+  <footer>
+    本分析仅为美学参考，不构成专业医疗或形象诊断建议<span class="dot">·</span>图片仅用于本次 AI 分析，不会保存或上传至任何服务器
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API_ENDPOINT = '/api/analyze';        // 本站 Vercel Serverless 接口
+  var MAX_SIZE = 2.5 * 1024 * 1024;         // 提交给后端的图片上限（Vercel 请求体上限 4.5MB）
+  var MAX_ORIGIN = 20 * 1024 * 1024;        // 允许选择的原图上限
+
+  var SECTIONS = [
+    { key: ['脸型骨骼', '脸型'],         title: '脸型骨骼分析' },
+    { key: ['PCCS', '色彩季型', '色彩'], title: 'PCCS色彩季型诊断' },
+    { key: ['气质', '风格判断'],         title: '气质风格判断' },
+    { key: ['形象方案', '穿搭色系'],     title: '形象方案' },
+    { key: ['发型推荐', '发型方案'],     title: '发型推荐方案' }
+  ];
+
+  /* ========== DOM ========== */
+  var $ = function (id) { return document.getElementById(id); };
+  var drop = $('drop'), fileInput = $('file'), thumb = $('thumb');
+  var fileNameEl = $('fileName'), fileSizeEl = $('fileSize'), removeBtn = $('removeBtn');
+  var analyzeBtn = $('analyzeBtn'), btnText = $('btnText'), resetBtn = $('resetBtn');
+  var alertBox = $('alert'), resultCard = $('result'), resBody = $('resBody'), resTime = $('resTime');
+
+  var currentFile = null;
+  var base64Url   = null;
+  var busy = false;
+
+  /* ========== 工具 ========== */
+  function showAlert(msg) { alertBox.textContent = msg; alertBox.classList.add('show'); }
+  function clearAlert() { alertBox.textContent = ''; alertBox.classList.remove('show'); }
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1024 / 1024).toFixed(2) + ' MB';
+  }
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  /* ========== 图片处理 ========== */
+  function urlBytes(url) {
+    var i = url.indexOf(',');
+    var b64 = i === -1 ? url : url.slice(i + 1);
+    return Math.floor(b64.length * 3 / 4);
+  }
+
+  function shrink(img) {
+    var plan = [
+      { edge: 1024, q: 0.85 },
+      { edge: 1024, q: 0.72 },
+      { edge: 900,  q: 0.7  },
+      { edge: 800,  q: 0.65 },
+      { edge: 640,  q: 0.6  }
+    ];
+    var best = null;
+    for (var p = 0; p < plan.length; p++) {
+      var url;
+      try {
+        var scale = Math.min(1, plan[p].edge / Math.max(img.width, img.height));
+        var cv = document.createElement('canvas');
+        cv.width  = Math.max(1, Math.round(img.width * scale));
+        cv.height = Math.max(1, Math.round(img.height * scale));
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        url = cv.toDataURL('image/jpeg', plan[p].q);
+      } catch (e) { return null; }
+      if (!best || url.length < best.length) best = url;
+      if (urlBytes(url) <= MAX_SIZE) return url;
+    }
+    return best;
+  }
+
+  function handleFile(file) {
+    clearAlert();
+    if (!file) return;
+
+    var name = file.name || '';
+    var isHeic = /^image\/hei(c|f)/i.test(file.type) || /\.(heic|heif)$/i.test(name);
+    if (isHeic) {
+      showAlert('这是 HEIC/HEIF 格式，浏览器无法直接读取。请在手机相册设置中改为「兼容性最佳」，或先导出为 JPG 再上传。');
+      return;
+    }
+    var okType = /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(name);
+    if (!okType) { showAlert('仅支持 JPG / PNG 格式的图片，当前文件类型：' + (file.type || '未知') + '。请重新选择。'); return; }
+    if (file.size > MAX_ORIGIN) {
+      showAlert('图片原图 ' + fmtSize(file.size) + ' 过大（上限 20MB），请先在相册里压缩或截图后再上传。');
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onerror = function () { showAlert('读取图片失败，请重试或更换图片。'); };
+    reader.onload = function () {
+      var origin = reader.result;
+      var img = new Image();
+      img.onerror = function () { showAlert('图片解析失败，可能文件已损坏，请更换图片。'); };
+      img.onload = function () {
+        var dataUrl = shrink(img) || origin;
+        var bytes = urlBytes(dataUrl);
+
+        if (bytes > MAX_SIZE) {
+          showAlert('图片压缩后仍有 ' + fmtSize(bytes) + '，超过上传上限。请换一张更小的图片或先截图。');
+          return;
+        }
+
+        currentFile = file;
+        base64Url = dataUrl;
+        thumb.src = origin;
+        fileNameEl.textContent = name || '未命名图片';
+        fileSizeEl.textContent = fmtSize(file.size) +
+          (bytes < file.size ? ' → 已压缩至 ' + fmtSize(bytes) : '') + ' · 可点击更换';
+        drop.classList.add('has');
+      };
+      img.src = origin;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    currentFile = null; base64Url = null;
+    thumb.removeAttribute('src');
+    fileNameEl.textContent = '—';
+    fileSizeEl.textContent = '—';
+    drop.classList.remove('has');
+    fileInput.value = '';
+  }
+
+  /* ========== 渲染结果 ========== */
+  function inlineMd(text) {
+    var html = escapeHtml(text);
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    return html;
+  }
+
+  function bodyHtml(raw) {
+    var lines = raw.replace(/\r/g, '').split('\n');
+    var out = '', inList = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/^\s+|\s+$/g, '');
+      if (!line) { if (inList) { out += '</ul>'; inList = false; } continue; }
+      var li = line.match(/^([-*•·]|\d+[.、)])\s+(.*)$/);
+      if (li) {
+        if (!inList) { out += '<ul>'; inList = true; }
+        out += '<li>' + inlineMd(li[2]) + '</li>';
+      } else {
+        if (inList) { out += '</ul>'; inList = false; }
+        out += '<p style="margin:0 0 6px">' + inlineMd(line) + '</p>';
+      }
+    }
+    if (inList) out += '</ul>';
+    return out;
+  }
+
+  function lineHas(line, keys) {
+    for (var k = 0; k < keys.length; k++) {
+      if (keys[k] === 'PCCS') { if (line.toUpperCase().indexOf('PCCS') > -1) return true; }
+      else if (line.indexOf(keys[k]) > -1) return true;
+    }
+    return false;
+  }
+  function looksHeader(line) {
+    return /^\s*(#{1,3}|\*{1,2}|\d+[.、．)）]|[一二三四][.、．)）])/.test(line) && line.length < 60;
+  }
+
+  function parseSections(text) {
+    var t = String(text || '').replace(/```[\s\S]*?```/g, '').replace(/\r/g, '').trim();
+    if (!t) return [];
+    var lines = t.split('\n');
+
+    function findLine(keys) {
+      for (var pass = 0; pass < 2; pass++) {
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (!lineHas(line, keys)) continue;
+          if (pass === 0 && !looksHeader(line)) continue;
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    var marks = [];
+    for (var i = 0; i < SECTIONS.length; i++) {
+      var li = findLine(SECTIONS[i].key);
+      if (li > -1) marks.push({ idx: i, line: li });
+    }
+
+    if (marks.length < 2) return [{ title: 'AI 分析结果', body: t }];
+
+    marks.sort(function (a, b) { return a.line - b.line; });
+
+    var used = {}, uniq = [];
+    for (var m = 0; m < marks.length; m++) {
+      if (used[marks[m].idx]) continue;
+      used[marks[m].idx] = true;
+      uniq.push(marks[m]);
+    }
+
+    var res = [];
+    for (var j = 0; j < uniq.length; j++) {
+      var s = uniq[j].line;
+      var e = (j + 1 < uniq.length) ? uniq[j + 1].line : lines.length;
+      var h = lines[s].trim()
+        .replace(/^#{1,3}\s*/, '')
+        .replace(/\*{1,2}/g, '')
+        .replace(/^\s*(\d+|[一二三四])[.、．)）]\s*/, '');
+      var ci = h.indexOf('：') > -1 ? h.indexOf('：') : h.indexOf(':');
+      h = (ci > -1 && ci <= 24) ? h.slice(ci + 1).trim() : '';
+      var body = (h ? h + '\n' : '') + lines.slice(s + 1, e).join('\n');
+      res.push({ title: SECTIONS[uniq[j].idx].title, body: body.trim() });
+    }
+    return res;
+  }
+
+  function renderResult(text) {
+    var sections = parseSections(text);
+    if (!sections.length) { showAlert('AI 未返回有效内容，请重试。'); return; }
+    var html = '';
+    for (var i = 0; i < sections.length; i++) {
+      html += '<div class="sec"><h3><span class="num">' + (i + 1) + '</span>' +
+              escapeHtml(sections[i].title) + '</h3>' +
+              '<div class="body">' + (sections[i].body ? bodyHtml(sections[i].body) : '<p style="margin:0">（本部分 AI 未给出内容）</p>') + '</div></div>';
+    }
+    resBody.innerHTML = html;
+    var d = new Date();
+    resTime.textContent = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                          ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    resultCard.classList.add('show');
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ========== 错误提示 ========== */
+  function httpMsg(status) {
+    if (status === 404) return '未找到接口 /api/analyze（404）。请确认已部署到 Vercel 并通过网址访问，直接双击打开 HTML 无法调用后端。';
+    if (status === 405) return '接口配置有误（405），请检查 Vercel 部署是否包含 api/analyze.js。';
+    if (status === 413) return '图片过大，已被服务端拒绝。请换一张更小的图片或先截图再上传。';
+    if (status === 429) return '调用频率超限，当前访问人数较多，请稍后再试。';
+    if (status === 503) return '当前使用人数已达上限，请稍后再试。';
+    if (status === 504) return 'AI 分析超时，请稍后重试或换一张更小的图片。';
+    if (status >= 500) return '服务端异常（' + status + '），请稍后重试。';
+    return '请求失败（HTTP ' + status + '）。';
+  }
+
+  /* ========== 主流程 ========== */
+  function setBusy(on) {
+    busy = on;
+    analyzeBtn.disabled = on;
+    analyzeBtn.classList.toggle('loading', on);
+    btnText.textContent = on ? 'AI正在分析人像风格，请稍候…' : '开始分析';
+  }
+
+  function analyze() {
+    if (busy) return;
+    clearAlert();
+
+    if (!currentFile || !base64Url) { showAlert('请先上传一张 JPG / PNG 人像照片。'); return; }
+    if (location.protocol === 'file:') {
+      showAlert('当前以本地文件方式打开，无法调用后端接口。请先部署到 Vercel，再通过网址访问本页面。');
+      return;
+    }
+
+    setBusy(true);
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 90000);
+
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Url })
+    })
+    .then(function (resp) {
+      return resp.text().then(function (txt) {
+        var data = null;
+        try { data = JSON.parse(txt); } catch (e) {}
+        if (!resp.ok || !data || data.ok !== true) {
+          var msg = (data && data.message) ? data.message : httpMsg(resp.status);
+          var err = new Error(msg);
+          err.code = data && data.code;
+          throw err;
+        }
+        return data;
+      });
+    })
+    .then(function (data) {
+      clearTimeout(timer);
+      setBusy(false);
+      renderResult(data.content);
+      if (data.truncated) {
+        showAlert('提示：内容较长，已达模型单次输出上限，末尾可能有省略，可再点一次【开始分析】重新生成。');
+      }
+    })
+    .catch(function (err) {
+      clearTimeout(timer);
+      setBusy(false);
+      if (err && err.name === 'AbortError') {
+        showAlert('请求超时：AI 分析耗时过长，请稍后重试或换一张更小的图片。');
+      } else if (err instanceof TypeError) {
+        showAlert('网络异常：无法连接到服务器，请检查网络后重试。');
+      } else {
+        showAlert((err && err.message) ? err.message : '分析失败，请稍后重试。');
+      }
+    });
+  }
+
+  /* ========== 事件绑定 ========== */
+  drop.addEventListener('click', function (e) {
+    if (e.target === removeBtn) return;   // 点「移除图片」时不重新弹窗
+    fileInput.click();                    // 有图/无图都可点击更换
+  });
+  drop.addEventListener('dragover', function (e) {
+    e.preventDefault(); drop.classList.add('drag');
+  });
+  drop.addEventListener('dragleave', function (e) {
+    e.preventDefault(); drop.classList.remove('drag');
+  });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault(); drop.classList.remove('drag');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  ['dragover', 'drop'].forEach(function (evt) {
+    document.addEventListener(evt, function (e) {
+      if (!drop.contains(e.target)) {
+        e.preventDefault();
+        if (evt === 'drop') handleFile(e.dataTransfer.files[0]);
+      }
+    });
+  });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+    fileInput.value = '';   // 允许重复选择同一个文件
+  });
+
+  document.addEventListener('paste', function (e) {
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image') === 0) {
+        var f = items[i].getAsFile();
+        if (f) { handleFile(f); e.preventDefault(); }
+        return;
+      }
+    }
+  });
+
+  removeBtn.addEventListener('click', function (e) {
+    e.stopPropagation(); clearImage(); clearAlert();
+  });
+
+  analyzeBtn.addEventListener('click', analyze);
+  resetBtn.addEventListener('click', function () {
+    clearImage();
+    clearAlert();
+    resultCard.classList.remove('show');
+    resBody.innerHTML = '';
+    setBusy(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
